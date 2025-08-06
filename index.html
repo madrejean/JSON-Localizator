@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ru">
+    <head>
+        <meta charset="UTF-8">
+        <title>JSON Localizator</title>
+        <style>
+            body {
+                font-family: sans-serif;
+                margin: 20px;
+
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+                align-items: center;
+
+            }
+
+            h1 {
+                margin: 0;
+            }
+
+            .entry {
+                margin-bottom: 10px;
+                border-bottom: 1px solid #ccc;
+                padding-bottom: 10px;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .original {
+                color: gray;
+                margin-bottom: 5px;
+            }
+
+            textarea {
+                min-height: 80px;
+                font-size: 1em;
+                font-family: Arial;
+            }
+
+            .status {
+                width: 16px;
+                height: 16px;
+                border-radius: 50%;
+            }
+
+            .key-container {
+                font-weight: bold;
+                font-size: smaller;
+                display: flex;
+                gap: 10px;
+                align-items: center;
+            }
+
+            .counter {
+                font-weight: normal;
+                font-size: smaller;
+            }
+
+            #editor {
+                width: 100%;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>JSON Localizator</h1>
+        <input type="file" id="jsonInput" accept=".json">
+        <div id="editor"></div>
+        <button id="downloadBtn" style="display: none;">download edited JSON</button>
+
+        <script>
+            
+            let originalData = {};
+            var fileName = 'translated.json';
+
+            document.getElementById('jsonInput').addEventListener('change', function(event) {
+                const file = event.target.files[0];
+                fileName = file.name;
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        originalData = JSON.parse(e.target.result);
+                        generateEditor(originalData);
+                    } catch (err) {
+                        alert("error: " + err.message);
+                    }
+                };
+                reader.readAsText(file);
+            });
+
+            function generateEditor(data) {
+                document.getElementById('downloadBtn').style.display = 'initial';
+                const editor = document.getElementById('editor');
+                editor.innerHTML = '';
+
+                const options = document.createElement('div');
+                options.innerHTML = `
+                    <div>
+                        <input type='checkbox' id='checkboxShowKeys' checked>
+                        <label>show keys</label>
+                    </div>
+                    <div>
+                        <input type='checkbox' id='checkboxShowNumbers' checked>
+                        <label>show numbers</label>
+                    </div>
+                    <div>
+                        <input type='checkbox' id='checkboxShowOriginals' checked>
+                        <label>show originals</label>
+                    </div>
+                `;
+                options.style.marginBottom = '20px';
+                editor.appendChild(options);
+
+                document.getElementById('checkboxShowKeys').addEventListener('change', (event) => {
+                    if (event.currentTarget.checked) {
+                        for (let element of document.getElementsByClassName('key')) {
+                            element.style.display = 'initial';
+                        }
+                    } else {
+                        for (let element of document.getElementsByClassName('key')) {
+                            element.style.display = 'none';
+                        }
+                    }
+                });
+                document.getElementById('checkboxShowNumbers').addEventListener('change', (event) => {
+                    if (event.currentTarget.checked) {
+                        for (let element of document.getElementsByClassName('counter')) {
+                            element.style.display = 'initial';
+                        }
+                    } else {
+                        for (let element of document.getElementsByClassName('counter')) {
+                            element.style.display = 'none';
+                        }
+                    }
+                });
+                document.getElementById('checkboxShowOriginals').addEventListener('change', (event) => {
+                    if (event.currentTarget.checked) {
+                        for (let element of document.getElementsByClassName('original')) {
+                            element.style.display = 'initial';
+                        }
+                    } else {
+                        for (let element of document.getElementsByClassName('original')) {
+                            element.style.display = 'none';
+                        }
+                    }
+                });
+
+                let idx = 1;
+                Object.keys(data).forEach(key => {
+                    const entry = document.createElement('div');
+                    entry.className = 'entry';
+
+                    entry.innerHTML = `
+                        <div class="key-container">
+                            <div class="status" data-key="${key}"></div>
+                            <span class="counter">${idx}</span>
+                            <span class="key">${key}</span>
+                        </div>
+                        <div class="original">${data[key]}</div>
+                        <textarea data-key="${key}" placeholder="${key}">${data[key]}</textarea>
+                        
+                    `;
+                    
+                    const textarea = entry.querySelector('textarea');
+                    const statusEl = entry.querySelector('.status');
+                    textarea.addEventListener('input', () => {
+                        const original = originalData[key];
+                        const current = textarea.value;
+                        if (current !== original) {
+                            statusEl.style.backgroundColor = "orange";
+                        } else {
+                            statusEl.style.backgroundColor = "limegreen";
+                        }
+                    });
+                    statusEl.style.backgroundColor = "limegreen";
+
+                    editor.appendChild(entry);
+                    idx += 1;
+                });
+            }
+            document.getElementById('downloadBtn').addEventListener('click', function() {
+                const textareas = document.querySelectorAll('textarea');
+                const newData = originalData;
+                textareas.forEach(ta => {
+                    const key = ta.getAttribute('data-key');    
+                    newData[key] = ta.value;
+                });
+                const blob = new Blob([JSON.stringify(newData, null, 2)], {
+                    type: "application/json"
+                });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `${fileName}`;
+                link.click();
+            });
+        </script>
+    </body>
+</html>
